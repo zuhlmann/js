@@ -1,0 +1,658 @@
+# 202605265
+# Salvaged from Google Earth Engine in tiny @u.boisestate access window
+
+GEE/INTRODUCTION
+/**** Start of imports. If edited, may not auto-convert in the playground. ****/
+var sent2 = ee.ImageCollection("COPERNICUS/S2"),
+    geometry = /* color: #d63000 */ee.Geometry.Polygon(
+        [[[-115.50332691229391, 42.835682454826696],
+          [-115.25199759046302, 43.45194918604966],
+          [-115.92770152104072, 43.15711683354303],
+          [-116.40701142712862, 43.053838402486775]]]),
+    imageVisParam = {"opacity":1,"bands":["B4","B3","B2"],"min":-5.379785104371422,"max":3042.20918496951,"gamma":1},
+    geometry2 = /* color: #98ff00 */ee.FeatureCollection(
+        [ee.Feature(
+            ee.Geometry.Point([-116.092529296875, 42.998621119271064]),
+            {
+              "system:index": "0"
+            }),
+        ee.Feature(
+            ee.Geometry.Point([-115.8453369140625, 43.06587799626207]),
+            {
+              "system:index": "1"
+            }),
+        ee.Feature(
+            ee.Geometry.Point([-115.8453369140625, 43.06688127198493]),
+            {
+              "system:index": "2"
+            })]),
+    old_harbor =
+    /* color: #00ff00 */
+    /* shown: false */
+    /* displayProperties: [
+      {
+        "type": "rectangle"
+      }
+    ] */
+    ee.Geometry.Polygon(
+        [[[-153.40461297892858, 57.243408106647344],
+          [-153.40461297892858, 57.19433429200709],
+          [-153.24428125285436, 57.19433429200709],
+          [-153.24428125285436, 57.243408106647344]]], null, false);
+/***** End of imports. If edited, may not auto-convert in the playground. *****/
+sent2 = sent2.filterDate('2024-06-01','2024-09-01')
+              .filterBounds(old_harbor)
+              .filter(ee.Filter.lt('CLOUDY_PIXEL_PERCENTAGE',30))
+
+print(sent2, 'Sentinel 2, filtered')
+
+var image = ee.Image('COPERNICUS/S2/20240615T213529_20240615T213530_T05VMD')
+Map.addLayer(image)
+Map.addLayer(image, imageVisParam,'Sentinel Image')//how to comment
+
+var clipImage=image.clip(geometry)
+Map.addLayer(clipImage, imageVisParam,'Clipped')
+////
+var image2 = image.select('B2','B3','B4','B5','B6','B7','B8','B8A')//'B.*' --wildcard'
+
+var chart0 = ui.Chart.image.byRegion({
+  image:image2,
+  regions:geometry2,
+  reducer:ee.Reducer.mean()
+})
+
+print(chart0,'Image bands')
+
+var getNDVI = function(image){
+  return image.addBands(image.normalizedDifference(['B8','B4']).rename('NDVI'))}
+
+//this below did not save
+var sent2_ndvi = sent2.map(getNDVI)
+
+var chart1 = ui.Chart.image.seriesByRegion({
+  imageCollection: sent2_ndvi,
+  regions: geometry2,
+  reducer:ee.Reducer.mean(),
+  band:'NDVI',
+  scale:10
+})
+
+
+GEE/MeganLab
+
+/**** Start of imports. If edited, may not auto-convert in the playground. ****/
+var geometry = /* color: #0B4A8B */ee.Geometry.Polygon(
+        [[[-108.841552734375, 38.89103282648846],
+          [-107.90771484375, 38.85682013474361],
+          [-107.90771484375, 39.37677199661635],
+          [-108.83056640625, 39.35978526869001]]]);
+/***** End of imports. If edited, may not auto-convert in the playground. *****/
+// How to make a timeline video for Landsat Data
+// This video uses NIR, Red, and Green to emphasize the vegetation
+// Megan Gallagher
+
+// Define an area to export.
+var polygon = ee.Geometry.Rectangle([-108.798,39.249, -106.996,38.454]);
+
+
+// Load a Landsat image collections:
+var collection0 = ee.ImageCollection('LANDSAT/LT5_L1T_TOA')
+ .filterDate('1984-03-01','1999-04-15') // for specific time periods
+ .filter(ee.Filter.lt('CLOUD_COVER', 25))//only scenes with less then 25% cloud cover
+ // .filter(ee.Filter.calendarRange(3, 6, 'month')) // For specific months within that year
+ ;
+
+var collection1 = ee.ImageCollection('LANDSAT/LE7_L1T_TOA')
+ .filterDate('1999-04-15','2003-05-31')
+ .filter(ee.Filter.lt('CLOUD_COVER', 25));
+
+var collection2 = ee.ImageCollection('LANDSAT/LT5_L1T_TOA')
+ .filterDate('2003-05-31','2011-08-01')
+ .filter(ee.Filter.lt('CLOUD_COVER', 25));
+
+var collection3 = ee.ImageCollection('LANDSAT/LE7_L1T_TOA')
+ .filterDate('2011-08-01','2012-02-01')
+ .filter(ee.Filter.lt('CLOUD_COVER', 25));
+
+var collection4 = ee.ImageCollection('LANDSAT/LT5_L1T_TOA')
+ .filterDate('2012-02-01','2013-04-01')
+ .filter(ee.Filter.lt('CLOUD_COVER', 25));
+
+var collection5 = ee.ImageCollection('LANDSAT/LC8_L1T_TOA')
+ .filterDate('2013-04-01','2017-02-02')
+ .filter(ee.Filter.lt('CLOUD_COVER', 25))
+ .map(function(image){
+       return image.rename ('B0','B1','B2','B3','B4','B5','B6','B7','B8','B9','B10','B11')});
+      // Landsat 8 band designations cause the system not to run correctly, so they are renamed to match the Landsat 5 & 7
+
+// Load one collection so you can take a look at the data, and also ue the INSPECTOR tab on the console to find the ROW and PATH
+var collection6 = ee.ImageCollection('LANDSAT/LC8_L1T_TOA')
+ .filterDate('2013-04-01','2017-02-02')
+ .filter(ee.Filter.lt('CLOUD_COVER', 5))
+var viewing = collection6; //this will show only the most recent images, but it does go through all of them
+Map.addLayer(viewing, {bands: ['B4','B3','B2'], max: 0.5});
+Map.centerObject(geometry);
+// merge collections together so there is one large image collection
+var coll0 =  ee.ImageCollection(collection0.merge(collection1));
+var coll1 =  ee.ImageCollection(coll0.merge(collection2));
+var coll2 =  ee.ImageCollection(coll1.merge(collection3));
+var coll3 =  ee.ImageCollection(coll2.merge(collection4));
+var coll4 =  ee.ImageCollection(coll3.merge(collection5))
+  .filter(ee.Filter.eq('WRS_PATH',34))
+  .filter(ee.Filter.eq('WRS_ROW', 33)) // row and path get rid of unnecessary run time
+  //.filterBounds(geometry) // or filter with a specific area, but this can add major errors and blank spaces
+  .select(['B4', 'B3', 'B2']) // This one chooses NIR, Red, and Green to focus on vegetation
+  .map(function(image) {
+    return image.multiply(512).uint8();   // Need to make the data 8-bit for a video
+  });
+
+print(coll4)
+// Export (change dimensions or scale for higher quality).
+Export.video.toDrive({
+  collection: coll4, // collection name for export
+  description: 'GrandMesa', // no spaces
+  dimensions: 720,
+  framesPerSecond: 10,
+  region: polygon,
+});
+
+GEE/dem_tolt
+/**** Start of imports. If edited, may not auto-convert in the playground. ****/
+var geometry =
+    /* color: #ff5015 */
+    /* displayProperties: [
+      {
+        "type": "rectangle"
+      }
+    ] */
+    ee.Geometry.Polygon(
+        [[[-115.2103349997594, 44.4510456141537],
+          [-115.2103349997594, 44.440261071189795],
+          [-115.19248221655627, 44.440261071189795],
+          [-115.19248221655627, 44.4510456141537]]], null, false);
+/***** End of imports. If edited, may not auto-convert in the playground. *****/
+var dataset = ee.Image('USGS/NED');
+var elevation = dataset.select('elevation');
+var elevationVis = {
+  min: 0.0,
+  max: 4000.0,
+  gamma: 1.6,
+};
+Map.setCenter(-100.55, 40.71, 5);
+Map.addLayer(elevation, elevationVis, 'Elevation');
+
+
+Export.image.toDrive({
+  image: elevationVis,
+  description:'small_sample_test',
+ ///crs:'EPSG:32617', //not usually necessary to have
+ scale:30, //how it grids up the pixel size
+ region: geometry //set boundary regiond, may have errors in choice
+ //maxPixels: 3690732168 only when exporting full scene, may cause errors
+});
+
+GEE/landfire
+/**** Start of imports. If edited, may not auto-convert in the playground. ****/
+var geometry =
+    /* color: #d63000 */
+    /* displayProperties: [
+      {
+        "type": "rectangle"
+      }
+    ] */
+    ee.Geometry.Polygon(
+        [[[-121.98800415039061, 47.85596296223854],
+          [-121.98800415039061, 47.55283837096829],
+          [-121.47027343749998, 47.55283837096829],
+          [-121.47027343749998, 47.85596296223854]]], null, false);
+/***** End of imports. If edited, may not auto-convert in the playground. *****/
+// var landfire = ee.ImageCollection('LANDFIRE/Vegetation/EVT/v1_4_0');
+var landfire = ee.Image('LANDFIRE/Vegetation/EVT/v1_4_0/CONUS').clip(geometry)
+// var conus = landfire.select('EVT')
+
+var visualization = {
+  bands: ['EVT'],
+  min:3000,
+  max:4000,
+};
+
+Map.setCenter(-121.69,47.7);
+Map.addLayer(landfire, visualization, 'EVT');
+
+print(landfire)
+
+var projection = landfire.projection().getInfo();
+var myScale = landfire.projection().nominalScale()
+
+Export.image.toDrive({
+  image: landfire,
+  description:'landfire_clip_gtiff',
+  fileFormat: 'GeoTIFF'
+  // crs:projection.crs,
+  // crsTransform:projection.transform,
+  // scale:myScale
+  // region: geometry //set boundary regiond, may have errors in choice
+// maxPixels: 3690732168 only when exporting full scene, may cause errors
+});
+
+GEE/mosaic_date_stackexchange
+/**** Start of imports. If edited, may not auto-convert in the playground. ****/
+var geometry =
+    /* color: #d63000 */
+    /* displayProperties: [
+      {
+        "type": "rectangle"
+      }
+    ] */
+    ee.Geometry.Polygon(
+        [[[-120.3188701670659, 38.58215015485632],
+          [-120.3188701670659, 38.470954715446496],
+          [-120.12763939314011, 38.470954715446496],
+          [-120.12763939314011, 38.58215015485632]]], null, false);
+/***** End of imports. If edited, may not auto-convert in the playground. *****/
+var poly = /* color: #d63000 */ee.Geometry.Polygon(
+    [[[-76.0803, 10.8656],
+      [-76.0913, 7.7436],
+      [-73.1909, 7.7545],
+      [-73.3776, 9.4273],
+      [-75.2124, 10.9304]]])
+
+// May 2024
+// NAIP for Mokelumne
+// FROM STACK:  https://gis.stackexchange.com/questions/280156/mosaicking-image-collection-by-date-day-in-google-earth-engine
+
+// TOP RESPONSE
+var start = ee.Date('2018-01-01');
+var finish = ee.Date('2023-01-01');
+
+var NAIP = ee.ImageCollection('USDA/NAIP/DOQQ')
+.filterDate(start, finish)
+.filterBounds(geometry);
+
+// // Difference in days between start and finish
+// var diff = finish.difference(start, 'day')
+
+// // Make a list of all dates
+// var range = ee.List.sequence(0, diff.subtract(1)).map(function(day){return start.advance(day,'day')})
+
+// // Funtion for iteraton over the range of dates
+// var day_mosaics = function(date, newlist) {
+//   // Cast
+//   date = ee.Date(date)
+//   newlist = ee.List(newlist)
+
+//   // Filter collection between date and the next day
+//   var filtered = collection.filterDate(date, date.advance(1,'day'))
+
+//   // Make the mosaic
+//   var image = ee.Image(filtered.mosaic())
+
+//   // Add the mosaic to a list only if the collection has images
+//   return ee.List(ee.Algorithms.If(filtered.size(), newlist.add(image), newlist))
+// }
+
+// // Iterate over the range to make a new list, and then cast the list to an imagecollection
+// var newcol = ee.ImageCollection(ee.List(range.iterate(day_mosaics, ee.List([]))))
+// print(newcol)
+
+
+// SECOND RESPONSE
+function mosaicByDate(imcol){
+  // imcol: An image collection
+  // returns: An image collection
+  var imlist = imcol.toList(imcol.size())
+
+  var unique_dates = imlist.map(function(im){
+    return ee.Image(im).date().format("YYYY-MM-dd")
+  }).distinct()
+
+  var mosaic_imlist = unique_dates.map(function(d){
+    d = ee.Date(d)
+
+    var im = imcol
+      .filterDate(d, d.advance(1, "day"))
+      .mosaic()
+
+    return im.set(
+        "system:time_start", d.millis(),
+        "system:id", d.format("YYYY-MM-dd"))
+  })
+
+  return ee.ImageCollection(mosaic_imlist)
+}
+
+var trueColor = NAIP.select(['R','G','B']);
+var trueColorVis = {
+  min:0,
+  max:255,
+};
+
+
+var ic_m = mosaicByDate(trueColor);
+var ic_m_list = ic_m.toList(ic_m.size());
+var img2 = ee.Image(ic_m_list.get(2));
+var img5 = ee.Image(ic_m_list.get(5));
+var img7 = ee.Image(ic_m_list.get(7));
+Map.addLayer(img2, trueColorVis, 'img2');
+Map.addLayer(img5, trueColorVis, 'img5');
+Map.addLayer(img7, trueColorVis, 'img7');
+
+
+Export.image.toDrive({
+  image: img2,
+  description:'naip_mokelumne_20220803_t1',
+  crs:'EPSG:26910',
+  scale:0.6,
+  region: geometry, //set boundary regiond, may have errors in choice
+  maxPixels: 3690732168, // only when exporting full scene, may cause errors
+});
+
+// // Check params
+// var projection = NAIP.first().select('B')
+// print(projection)
+
+
+GE/mosaic_date_v2
+/**** Start of imports. If edited, may not auto-convert in the playground. ****/
+var geometry =
+    /* color: #d63000 */
+    /* displayProperties: [
+      {
+        "type": "rectangle"
+      }
+    ] */
+    ee.Geometry.Polygon(
+        [[[-120.3188701670659, 38.58215015485632],
+          [-120.3188701670659, 38.470954715446496],
+          [-120.12763939314011, 38.470954715446496],
+          [-120.12763939314011, 38.58215015485632]]], null, false);
+/***** End of imports. If edited, may not auto-convert in the playground. *****/
+var poly = /* color: #d63000 */ee.Geometry.Polygon(
+    [[[-76.0803, 10.8656],
+      [-76.0913, 7.7436],
+      [-73.1909, 7.7545],
+      [-73.3776, 9.4273],
+      [-75.2124, 10.9304]]])
+
+// May 2024
+// NAIP for Mokelumne
+// FROM STACK:  https://gis.stackexchange.com/questions/280156/mosaicking-image-collection-by-date-day-in-google-earth-engine
+
+// TOP RESPONSE
+var start = ee.Date('2018-01-01');
+var finish = ee.Date('2023-01-01');
+
+var NAIP = ee.ImageCollection('USDA/NAIP/DOQQ')
+.filterDate(start, finish)
+.filterBounds(geometry);
+
+// // Difference in days between start and finish
+// var diff = finish.difference(start, 'day')
+
+// // Make a list of all dates
+// var range = ee.List.sequence(0, diff.subtract(1)).map(function(day){return start.advance(day,'day')})
+
+// // Funtion for iteraton over the range of dates
+// var day_mosaics = function(date, newlist) {
+//   // Cast
+//   date = ee.Date(date)
+//   newlist = ee.List(newlist)
+
+//   // Filter collection between date and the next day
+//   var filtered = collection.filterDate(date, date.advance(1,'day'))
+
+//   // Make the mosaic
+//   var image = ee.Image(filtered.mosaic())
+
+//   // Add the mosaic to a list only if the collection has images
+//   return ee.List(ee.Algorithms.If(filtered.size(), newlist.add(image), newlist))
+// }
+
+// // Iterate over the range to make a new list, and then cast the list to an imagecollection
+// var newcol = ee.ImageCollection(ee.List(range.iterate(day_mosaics, ee.List([]))))
+// print(newcol)
+
+
+// SECOND RESPONSE
+function mosaicByDate(imcol){
+  // imcol: An image collection
+  // returns: An image collection
+  var imlist = imcol.toList(imcol.size())
+
+  var unique_dates = imlist.map(function(im){
+    return ee.Image(im).date().format("YYYY-MM-dd")
+  }).distinct()
+
+  var mosaic_imlist = unique_dates.map(function(d){
+    d = ee.Date(d)
+
+    var im = imcol
+      .filterDate(d, d.advance(1, "day"))
+      .mosaic()
+
+    return im.set(
+        "system:time_start", d.millis(),
+        "system:id", d.format("YYYY-MM-dd"))
+  })
+
+  return ee.ImageCollection(mosaic_imlist)
+}
+
+var trueColor = NAIP.select(['R','G','B']);
+var trueColorVis = {
+  min:0,
+  max:255,
+};
+
+
+var ic_m = mosaicByDate(trueColor);
+var ic_m_list = ic_m.toList(ic_m.size());
+var img2 = ee.Image(ic_m_list.get(2));
+var img5 = ee.Image(ic_m_list.get(5));
+var img7 = ee.Image(ic_m_list.get(7));
+Map.addLayer(img2, trueColorVis, 'img2');
+Map.addLayer(img5, trueColorVis, 'img5');
+Map.addLayer(img7, trueColorVis, 'img7');
+
+
+Export.image.toDrive({
+  image: img2,
+  description:'naip_mokelumne_20220803_t1',
+  crs:'EPSG:26910',
+  scale:0.6,
+  region: geometry, //set boundary regiond, may have errors in choice
+  maxPixels: 3690732168, // only when exporting full scene, may cause errors
+});
+
+// // Check params
+// var projection = NAIP.first().select('B')
+// print(projection)
+
+GEE/naip
+/**** Start of imports. If edited, may not auto-convert in the playground. ****/
+var bounding_box =
+    /* color: #98ff00 */
+    /* shown: false */
+    /* displayProperties: [
+      {
+        "type": "rectangle"
+      }
+    ] */
+    ee.Geometry.Polygon(
+        [[[-117.3687140453966, 49.010641491469556],
+          [-117.3687140453966, 48.97606253990138],
+          [-117.33077688108996, 48.97606253990138],
+          [-117.33077688108996, 49.010641491469556]]], null, false);
+/***** End of imports. If edited, may not auto-convert in the playground. *****/
+var defaultMap = Map;
+var geom = ee.Geometry.Point(-117.33992,48.97297);
+defaultMap.centerObject(geom,22);
+// Map.addLayer(trueColor, trueColorVis, 'True Color');
+
+// var bb = ee.Geometry.Polygon([[-121.62,47.69], [-121.62,47.71], [-121.7,47.71], [-121.7,47.69]]);
+var NAIP = ee.ImageCollection('USDA/NAIP/DOQQ')
+            .filter(ee.Filter.date('2018-01-01', '2020-06-01'))
+            .filterBounds(bounding_box)
+            // .mosaic()
+            // .first();
+
+var trueColor = NAIP.select(['R','G','B']);
+var trueColorVis = {
+  min:0,
+  max:255,
+};
+
+Map.addLayer(trueColor, trueColorVis, 'naip_boundary_dam');;
+
+
+// var projection = trueColor.select('B').projection().getInfo();
+// var myScale = trueColor.select('B').projection().nominalScale()
+
+print(first);
+print(trueColor);
+
+// Export.image.toDrive({
+//   image: trueColor,
+//   description:'naip_m_2408002_ne_17_060_20191126',
+//   crs:'EPSG:26910',
+//   crsTransform:23096,
+//   scale:0.6
+//   // region: geometry //set boundary regiond, may have errors in choice
+// // maxPixels: 3690732168 only when exporting full scene, may cause errors
+// });
+
+GEE/nlcd
+var dataset = ee.ImageCollection('USGS/NLCD_RELEASES/2019_REL/NLCD');
+var clip_bdry = ee.Geometry.Polygon([[-117.35, 48.6], [-117.35,48.9], [-117.1, 48.9],[-117.1,48.6]])
+var nlcd19 = dataset.filter(ee.Filter.eq('system:index', '2001')).first()
+var nlcd19 = nlcd19.select('landcover');
+
+// The collection contains images for multiple years and regions in the USA.
+print('Products:', dataset.aggregate_array('system:index'));
+
+var nlcd19 = nlcd19.clip(clip_bdry)
+
+var elevationVis = {
+  'bands': ['landcover']
+};
+
+
+Map.addLayer(nlcd19, elevationVis, 'nlcd');
+
+Export.image.toDrive({
+  image: nlcd19,
+  description:'sullivan_lk_nlcd2001',
+  crs:'EPSG:3857', //not usually necessary to have
+  scale:30, //how it grids up the pixel size
+// region: geometry //set boundary regiond, may have errors in choice
+//maxPixels: 3690732168 only when exporting full scene, may cause errors
+});
+
+GEE/sentinel_zu
+/**** Start of imports. If edited, may not auto-convert in the playground. ****/
+var old_harbor =
+    /* color: #0000ff */
+    /* displayProperties: [
+      {
+        "type": "rectangle"
+      },
+      {
+        "type": "rectangle"
+      }
+    ] */
+    ee.Geometry.MultiPolygon(
+        [[[[-153.3279193883472, 57.22386867357622],
+           [-153.3279193883472, 57.22386867357622],
+           [-153.32783355765872, 57.22386867357622],
+           [-153.32783355765872, 57.22386867357622]]],
+         [[[-153.32448616080814, 57.22284642656745],
+           [-153.32448616080814, 57.20490602922109],
+           [-153.2788242345386, 57.20490602922109],
+           [-153.2788242345386, 57.22284642656745]]]], null, false);
+/***** End of imports. If edited, may not auto-convert in the playground. *****/
+var sent2_manual = ee.ImageCollection("COPERNICUS/S2_SR_HARMONIZED")
+var sent2 = sent2_manual.filterDate('2024-06-01','2024-09-01')
+              .filterBounds(old_harbor)
+              .filter(ee.Filter.lt('CLOUDY_PIXEL_PERCENTAGE',30))
+
+print(sent2, 'Sentinel 2, filtered')
+
+var image = ee.Image('COPERNICUS/S2_SR_HARMONIZED/20240615T213529_20240615T213530_T05VM')
+// Map.addLayer(image)
+// Map.addLayer(image, imageVisParam,'Sentinel Image')//how to comment
+
+var clipImage=image.clip(old_harbor)
+// Map.addLayer(clipImage, imageVisParam,'Clipped')
+////
+var image2 = image.select('B2','B3','B4','B5','B6','B7','B8','B8A')//'B.*' --wildcard'
+var clipImage = clipImage.select('B2','B3','B4')
+map.addLayer(clipImage, 'Clipped')
+
+print(clipImage)
+
+
+// Export.image.toDrive({
+//   image: clipImage,
+//   description:'sentinel_20240615T213529_20240615T213530_T05VMD_RGB',
+//   crs:'EPSG:32605',
+// //   crsTransform:23096,
+//   scale:10
+// //   // region: geometry //set boundary regiond, may have errors in choice
+// // maxPixels: 3690732168 only when exporting full scene, may cause errors
+// });
+
+
+GE/snowGM
+/**** Start of imports. If edited, may not auto-convert in the playground. ****/
+var geometry = /* color: #d63000 */ee.Geometry.Polygon(
+        [[[-108.32931518554688, 38.817893210504366],
+          [-107.78823852539062, 38.81147298689894],
+          [-107.79510498046875, 39.171178142111316],
+          [-108.36776733398438, 39.17011347326742]]]),
+    landsat8 = ee.ImageCollection("LANDSAT/LC8_SR"),
+    visndvi = {"opacity":1,"bands":["nd"],"palette":["ffffff","e2ffdf","bde4c3","5ba556"]},
+    sent2 = ee.ImageCollection("COPERNICUS/S2");
+/***** End of imports. If edited, may not auto-convert in the playground. *****/
+landsat8 = ee.ImageCollection(landsat8) //this adds both bounding time and area, with choosing the lowest cloud cover
+  .filterDate('2016-11-01',"2017-03-31")
+  .filterBounds (geometry)
+  .filter(ee.Filter.lt('CLOUD_COVER', 5))
+
+
+sent2 =ee.ImageCollection(sent2) //this adds both bounding time and area, with choosing the lowest cloud cover
+  .filterDate('2016-11-01',"2017-03-31")
+  .filterBounds (geometry)
+  .filter(ee.Filter.lt('CLOUD_COVERAGE_ASSESSMENT',25));
+
+  print(sent2, "sentinel")
+
+
+
+var getNDVI_l8= function(image){ //this was just for reference
+var ndvi = ee.Image(image).normalizedDifference(['B5','B4']);
+return ndvi.copyProperties(ee.Image(image),['system:time_start']);
+};
+
+
+print(landsat8,"collection") //prints out landsat images that fit the specifics
+
+  var l9_only = ee.Image('COPERNICUS/S2/20170214T180431_20170214T180427_T13SBD'); //' you can change what image is shown by copy pasting
+
+var ndvi = ee.Image(l9_only)
+  .normalizedDifference(['B5','B4']); //ndvi
+
+var ndsi = ee.Image(l9_only)
+  .normalizedDifference(['B3','B6']);
+
+
+Map.addLayer(ndvi, visndvi); //look at image on map
+Map.addLayer(ndsi);
+
+Export.image.toDrive({
+  image: ndvi,
+  description:'grandmesa_ndvi_sent',
+ ///crs:'EPSG:32617', //not usually necessary to have
+ scale:30, //how it grids up the pixel size
+ region: geometry //set boundary regiond, may have errors in choice
+ //maxPixels: 3690732168 only when exporting full scene, may cause errors
+});
